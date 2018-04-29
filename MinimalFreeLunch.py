@@ -5,9 +5,9 @@ from fractions import Fraction
 import copy
 import shelve
 
+
 def l1_equiv_lp(N, constraint_rhs, objective_weight_vector=None, variable_lower_bound=None, variable_upper_bound=None):
     m, n = getSize(N)
-    # alpha = Fraction(1, 10)
     # following part set a default weight vector
     if objective_weight_vector is None:
         objective_weight_vector = np.ones(n)
@@ -99,19 +99,17 @@ def l1_equiv_lp_ans(p, status, reactions_num):
     return solution_non_zero_elements, solution_non_zero_indexes, ans_vector_x, ans_vector_z
 
 
-def re_weighted_linear_program(N, e, problem_case,variable_lower_bound, variable_upper_bound):
+def re_weighted_linear_program(N, e, variable_lower_bound, variable_upper_bound):
     flag = True
-    optimial_solution_lenght = 0
+    optimal_solution_length = 0
     m, n = getSize(N)
     iteration = 0
     w = np.ones(n)
     epsilon = Fraction(1, 10)
+    stop_num = 6
 
-    while iteration <= 5 and flag:
-        if int(problem_case) == 1:
-            p, status, reactions_num = l1_equiv_lp(N, e, w,variable_lower_bound, variable_upper_bound)
-        else:
-            p, status, reactions_num = minimum_free_lunches(N, e, w,variable_lower_bound, variable_upper_bound)
+    while iteration < stop_num and flag:
+        p, status, reactions_num = l1_equiv_lp(N, e, w, variable_lower_bound, variable_upper_bound)
         print('%d iteration' % iteration)
         solution_non_zero_elements, solution_non_zero_indexes, ans_vector_x, ans_vector_z \
             = l1_equiv_lp_ans(p, status, n)
@@ -119,17 +117,17 @@ def re_weighted_linear_program(N, e, problem_case,variable_lower_bound, variable
             for i in range(n):
                 w[i] = Fraction(1, p.get_value('z' + str(i)) + epsilon)
             check_array, check_array_non_zero, flag = ans_check(N, ans_vector_x, e, m)
-            print('check_array_non_zero:', check_array_non_zero)
+            # print('check_array_non_zero:', check_array_non_zero)
             print('solution non-zero element', solution_non_zero_elements)
             print('solutions non-zero indexes', solution_non_zero_indexes)
         else:
             print('LP does not have a solution for these constraints')
-            iteration = 6
+            iteration = stop_num
         iteration += 1
-        if len(solution_non_zero_elements) == optimial_solution_lenght:
+        if len(solution_non_zero_elements) == optimal_solution_length:
             flag = False
         else:
-            optimial_solution_lenght = len(solution_non_zero_elements)
+            optimal_solution_length = len(solution_non_zero_elements)
     return p, status, reactions_num, solution_non_zero_elements, solution_non_zero_indexes, ans_vector_x, ans_vector_z
 
 
@@ -156,7 +154,6 @@ def ans_check(N, ans_vector_x, e, n):
 
 
 def free_lunch_check(N, reaction_vector, constraint_rhs):
-    #non_zero_indexes = list(np.nonzero(reaction_vector)[0])
     non_zero_indexes = []
     for j in range(len(reaction_vector)):
         if reaction_vector[j] != 0:
@@ -170,7 +167,7 @@ def free_lunch_check(N, reaction_vector, constraint_rhs):
     p, status, n = l1_equiv_lp(N, constraint_rhs, None, lower_upper_bound, lower_upper_bound)
     if status == qsoptex.SolutionStatus.OPTIMAL:
         free_lunch_status = True
-    print("TRACE free lunch statuse:",free_lunch_status)
+    print("TRACE free lunch status:", free_lunch_status)
     return free_lunch_status, p, status, n
 
 
@@ -222,133 +219,56 @@ def remove_unusful_reaction(N):
         return N, removed_column_index,p,ne
 
 
-def scripts_mfl(N,irrev_reactions):
+def scripts_mfl(model, all_flm_index_list):
+    # This function will return minimal free lunches for a given model with a specific list of free lunch metabolites
+    # Please setup path for your output
     from collections import defaultdict
-
-    m,n = getSize(N)
+    N, removed_column_index, p, ne = remove_unusful_reaction(model.fullMatrix)
+    # find biomass reaction
+    biomass_reaction = model.findBiomassReaction()
+    # make a copy of sloppy reactions - blocked reactions are the reactions that would cause false free lunches
+    # because of their representation in stoichiometric matrix
+    blocked_reactions = copy.copy(removed_column_index)
+    # add biomass reaction to blocked reactions - we are not interested in biomass reaction for now
+    blocked_reactions.append(biomass_reaction)
+    # find additional biomass reactions
+    biomass_reaction_candidates = []
+    for r in model.reactions:
+        reaction_name_biomass = r.name.lower()
+        if reaction_name_biomass.find('biomass') != -1:
+            biomass_reaction_candidates.append({'name': r.name, 'index': r.index})
+            blocked_reactions.append(r.index)
+    m, n = getSize(N)
     output_dict = defaultdict(list)
     indexes_output_dict = defaultdict(list)
-    irrev_reactions_bd = [None]*n
-    for i in irrev_reactions:
-        irrev_reactions_bd[i]=0
-    print(irrev_reactions_bd)
-    for i in range(1,10,1):
-        e = standard_basis(m,i)
-        print('-------------------------------------->>>>   '+str(i)+'   <<<<------------------------------------------------------')
-        print('-----------------------------------------------WEAK---------------------------------------------------')
+    # Reactions which we want to block
+    deleted_reactions_bd = [None] * n
+    for i in blocked_reactions:
+        deleted_reactions_bd[i] = 0
+
+    for i in all_flm_index_list:
+        e = standard_basis(m,int(i))
+        # print('-------------------------------------->>>>   '+str(i)+'   <<<<------------------------------------------------------')
+        # print('-----------------------------------------------FL---------------------------------------------------')
         p, status, reactions_num, solution_non_zero_elements, solution_non_zero_indexes_w, ans_vector_x_w, ans_vector_z=\
-            re_weighted_linear_program(N,e,1,None,None)
-        output_dict['weak'+str(i)] = copy.deepcopy(ans_vector_x_w)
-        indexes_output_dict['weak' + str(i)] = copy.deepcopy(solution_non_zero_indexes_w)
-        print('---------------------------------------------------OUTPUT----------------------------------------------')
-        print('solution_non_zero_indexes', solution_non_zero_indexes_w)
-        print('solution_non_zero_elements',solution_non_zero_elements)
-        print('-----------------------------------------------Minimal-WEAK---------------------------------------------------')
+            re_weighted_linear_program(N, e, deleted_reactions_bd, deleted_reactions_bd)
+        output_dict['FL'+str(i)] = copy.deepcopy(ans_vector_x_w)
+        indexes_output_dict['FL' + str(i)] = copy.deepcopy(solution_non_zero_indexes_w)
+        # print('---------------------------------------------------OUTPUT----------------------------------------------')
+        # print('solution_non_zero_indexes', solution_non_zero_indexes_w)
+        # print('solution_non_zero_elements',solution_non_zero_elements)
+        # print('-----------------------------------------------Minimal-FL---------------------------------------------------')
         minimal_set_indexes_w, reaction_vector_w = extract_minimal_set(N,ans_vector_x_w,e)
-        output_dict['minimalWeak' + str(i)] = copy.deepcopy(reaction_vector_w)
-        indexes_output_dict['minimalWeak' + str(i)] = copy.deepcopy(minimal_set_indexes_w)
-        print('---------------------------------------------------OUTPUT----------------------------------------------')
-        print(output_dict)
-        print('-----------------------------------------------STRONG---------------------------------------------------')
-        p, status, reactions_num, solution_non_zero_elements, solution_non_zero_indexes_s, ans_vector_x_s, ans_vector_z = \
-            re_weighted_linear_program(N, e, 1, irrev_reactions_bd, None)
-        output_dict['strong' + str(i)] = copy.deepcopy(ans_vector_x_s)
-        indexes_output_dict['strong' + str(i)] = copy.deepcopy(solution_non_zero_indexes_s)
-        print('---------------------------------------------------OUTPUT----------------------------------------------')
-        print('solution_non_zero_indexes', solution_non_zero_indexes_s)
-        print('solution_non_zero_elements',solution_non_zero_elements)
-        print('-----------------------------------------------Minimal-STRONG---------------------------------------------------')
-        minimal_set_indexes_s, reaction_vector_s = extract_minimal_set(N, ans_vector_x_s, e)
-        output_dict['minimalStrong' + str(i)] = copy.deepcopy(reaction_vector_s)
-        indexes_output_dict['minimalStrong' + str(i)] = copy.deepcopy(minimal_set_indexes_s)
-        print('---------------------------------------------------OUTPUT----------------------------------------------')
-        print(output_dict)
+        output_dict['minimalFL' + str(i)] = copy.deepcopy(reaction_vector_w)
+        indexes_output_dict['minimalFL' + str(i)] = copy.deepcopy(minimal_set_indexes_w)
+        # print('---------------------------------------------------OUTPUT----------------------------------------------')
+        # print(output_dict)
     # save dicts
-    output_shelved_dict = shelve.open("/home/hzabeti/Dropbox/SFU/output.db")
+    output_shelved_dict = shelve.open("/path/for/output/FL.db")
     output_shelved_dict.update(output_dict)
     output_shelved_dict.close()
     ####
-    indexes_output_shelved_dict = shelve.open("/home/hzabeti/Dropbox/SFU/indexesOutput.db")
-    indexes_output_shelved_dict.update(indexes_output_dict)
-    indexes_output_shelved_dict.close()
-    return output_dict, indexes_output_dict
-
-
-def scripts_mfl_after_matrix_reduction(M, irrev_reactions):
-    from collections import defaultdict
-    # update Matrix
-    N, removed_column_index, p, ne = remove_unusful_reaction(M)
-    print("TRACE removed column indexes length:", len(removed_column_index))
-    # update irreversible reactions vector
-    #for j in irrev_reactions:
-        #if j in removed_column_index:
-            #irrev_reactions.remove(j)
-    # re-ordering ir irrev_reactions indexes
-    #irrev_reactions_updated=copy.deepcopy(irrev_reactions)
-    #for k in removed_column_index:
-        #for l in irrev_reactions:
-            #if k<l:
-                #irrev_reactions_updated[:] = irrev_reactions_updated[:irrev_reactions.index(l)] + \
-                                             #[x - 1 for x in irrev_reactions_updated[irrev_reactions.index(l):]]
-                #break
-    #irrev_reactions = copy.deepcopy(irrev_reactions_updated)
-    m,n = getSize(N)
-    print("TRACE m and n",m,n)
-    output_dict = defaultdict(list)
-    indexes_output_dict = defaultdict(list)
-    irrev_reactions_bd = [None]*n
-    deleted_reactions_bd = [None]*n
-    finial_reactions_lower_bd = [None]*n
-    for i in irrev_reactions:
-        irrev_reactions_bd[i]=0
-    print(irrev_reactions_bd)
-    for i in removed_column_index:
-       deleted_reactions_bd[i]=0
-    print(deleted_reactions_bd)
-    for i in irrev_reactions:
-        finial_reactions_lower_bd[i]=0
-    for i in removed_column_index:
-        finial_reactions_lower_bd[i]=0
-    deleted_reactions_bd[479]=0
-    for i in range(m):
-        e = standard_basis(m,i)
-        print('-------------------------------------->>>>   '+str(i)+'   <<<<------------------------------------------------------')
-        print('-----------------------------------------------WEAK---------------------------------------------------')
-        p, status, reactions_num, solution_non_zero_elements, solution_non_zero_indexes_w, ans_vector_x_w, ans_vector_z=\
-            re_weighted_linear_program(N,e,1,deleted_reactions_bd,deleted_reactions_bd)
-        output_dict['weak'+str(i)] = copy.deepcopy(ans_vector_x_w)
-        indexes_output_dict['weak' + str(i)] = copy.deepcopy(solution_non_zero_indexes_w)
-        print('---------------------------------------------------OUTPUT----------------------------------------------')
-        print('solution_non_zero_indexes', solution_non_zero_indexes_w)
-        print('solution_non_zero_elements',solution_non_zero_elements)
-        print('-----------------------------------------------Minimal-WEAK---------------------------------------------------')
-        minimal_set_indexes_w, reaction_vector_w = extract_minimal_set(N,ans_vector_x_w,e)
-        output_dict['minimalWeak' + str(i)] = copy.deepcopy(reaction_vector_w)
-        indexes_output_dict['minimalWeak' + str(i)] = copy.deepcopy(minimal_set_indexes_w)
-        print('---------------------------------------------------OUTPUT----------------------------------------------')
-        print(output_dict)
-        '''
-        print('-----------------------------------------------STRONG---------------------------------------------------')
-        p, status, reactions_num, solution_non_zero_elements, solution_non_zero_indexes_s, ans_vector_x_s, ans_vector_z = \
-            re_weighted_linear_program(N, e, 1, finial_reactions_lower_bd, deleted_reactions_bd)
-        output_dict['strong' + str(i)] = copy.deepcopy(ans_vector_x_s)
-        indexes_output_dict['strong' + str(i)] = copy.deepcopy(solution_non_zero_indexes_s)
-        print('---------------------------------------------------OUTPUT----------------------------------------------')
-        print('solution_non_zero_indexes', solution_non_zero_indexes_s)
-        print('solution_non_zero_elements',solution_non_zero_elements)
-        print('-----------------------------------------------Minimal-STRONG---------------------------------------------------')
-        minimal_set_indexes_s, reaction_vector_s= extract_minimal_set(N, ans_vector_x_s, e)
-        output_dict['minimalStrong' + str(i)] = copy.deepcopy(reaction_vector_s)
-        indexes_output_dict['minimalStrong' + str(i)] = copy.deepcopy(minimal_set_indexes_s)
-        print('---------------------------------------------------OUTPUT----------------------------------------------')
-        print(output_dict)
-        '''
-    # save dicts
-    output_shelved_dict = shelve.open("/home/hzabeti/Dropbox/SFU/afterReductionOutput2.db")
-    output_shelved_dict.update(output_dict)
-    output_shelved_dict.close()
-    ####
-    indexes_output_shelved_dict = shelve.open("/home/hzabeti/Dropbox/SFU/afterReductionIndexesOutput2.db")
+    indexes_output_shelved_dict = shelve.open("/path/for/output/MFL.db")
     indexes_output_shelved_dict.update(indexes_output_dict)
     indexes_output_shelved_dict.close()
     return output_dict, indexes_output_dict, removed_column_index

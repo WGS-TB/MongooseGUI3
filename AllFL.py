@@ -2,9 +2,14 @@ from MinimalFreeLunch import *
 import numpy as np
 import copy
 
+# Following functions would find all free lunch metabolites for a given model (obj)
+
 
 def all_free_lunches(N, constraint_rhs=None, objective_weight_vector=None, variable_lower_bound=None,
                      variable_upper_bound=None):
+    # This function would solve the maximization problem max |y|_0 s.t. Sx-y >= 0, 0 <= y <= 1 to find all free lunch
+    # metabolites in a model. N is the stoichiometric matrix of the model. For our problem constraint_rhs is always
+    # equal to vector zero.
     m, n = getSize(N)
     # Set default weight vector
     if objective_weight_vector is None:
@@ -63,7 +68,7 @@ def all_fl_metabolites(model):
     # find biomass reaction
     biomass_reaction = model.findBiomassReaction()
     # make a copy of sloppy reactions - blocked reactions are the reactions that would cause false free lunches
-    # because of their representation in stoichiomatric matrix
+    # because of their representation in stoichiometry matrix
     blocked_reactions = copy.copy(removed_column_index)
     # add biomass reaction to blocked reactions - we are not interested in biomass reaction for now
     blocked_reactions.append(biomass_reaction)
