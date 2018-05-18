@@ -99,7 +99,7 @@ def l1_equiv_lp_ans(p, status, reactions_num):
     # print(solution_non_zero_indexes)
     return solution_non_zero_elements, solution_non_zero_indexes, ans_vector_x, ans_vector_z
 
-# In the following function we implemented the "iterative algorithm for reweighted l1 minimization" presented in
+# The following function is based on the "iterative algorithm for reweighted l1 minimization" presented in
 # "Enhancing Sparsity by Reweighted l1 Minimization" by EJ. Candes, MB Wakin and SP Boyd.
 def re_weighted_linear_program(N, e, variable_lower_bound, variable_upper_bound):
     flag = True
