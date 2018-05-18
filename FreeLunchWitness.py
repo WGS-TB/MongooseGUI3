@@ -1,10 +1,22 @@
 import copy
 import math
+import cplex
+import os
 from MinimalFreeLunch import *
 
-def model_to_mps(N, y_lower_bound, y_upper_bound, deleted_columns, model_name):
+# Following functions would help us find a set of free lunch witnesses for specific model
+# For further analysis, first, we save the problem in mps format
+# and we solve the problem via Cplex 12.8.0 API for Python afterward.
+# To find FLWs:
+# 1) import FreeLunchWitness
+# 2) use function model_mps_writer(model,'/path/you/want/to/save/mps/file/.mps') to save the problem in mps format
+# 3) use function flw_finder_via_mps('/path/of/saved/mps/file/.mps')
+
+
+def model_to_mps(N, y_lower_bound, y_upper_bound, deleted_columns, mps_file_path):
     m, n = getSize(N)
-    opt_file = open('/home/hzabeti/Dropbox/SFU/MPS-LP/' + model_name + '.mps', 'w')
+    mps_file = os.path.abspath(mps_file_path)
+    opt_file = open(mps_file, 'w')
     opt_file.write('NAME\tProblem\n')
     opt_file.write('OBJSENSE\n')
     opt_file.write('\tMIN\n')
@@ -85,10 +97,18 @@ def mps_deleted_columns(model):
     return blocked_reactions
 
 
-def main(model, model_name):
+def model_mps_writer(model, mps_file_path):
     N = model.fullMatrix
     deleted_columns = mps_deleted_columns(model)
     max_norm, norm_array = matrix_norm_two(N)
     y_lower_bound,y_upper_bound = y_bounds(N,max_norm)
-    model_to_mps(N,y_lower_bound,y_upper_bound,deleted_columns,model_name)
+    model_to_mps(N,y_lower_bound,y_upper_bound,deleted_columns,mps_file_path)
 
+
+def flw_finder_via_mps(file_path):
+    mps_file =os.path.abspath(file_path)
+    flw_problem = cplex.Cplex(mps_file)
+    flw_problem.solve()
+    flw_objective_value = flw_problem.solution.get_objective_value()
+    flw_list = [v for v in flw_problem.variables.get_names() if v[0] == 'x' and flw_problem.solution.get_values(v)!=0]
+    return flw_objective_value,flw_list
