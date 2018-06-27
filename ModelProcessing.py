@@ -19,6 +19,7 @@ ESOLVER_PATH = "/qsopt-ex/build/esolver/.libs/esolver"
 #ESOLVER_PATH = "/Users/christopherle/Documents/Leonid/qsopt-ex/build/esolver/.libs/esolver"
 #ESOLVER_PATH = "/Users/Admin/Downloads/DownloadedSoftware/qsopt-ex/build/esolver/.libs/esolver"
 
+
 def reduceMatrix(N, Irr, Filename = 'Reduction.txt'):
     # This function computes the reduced form of a given stoichiometric matrix
     # assuming that the specified list of reactions is irreversible.
@@ -91,6 +92,7 @@ def reduceMatrix(N, Irr, Filename = 'Reduction.txt'):
     extraFilename = Filename[:-4] + 'Full' + Filename[-4:]
     writeResults(current, Irrev, reductionRecord, extraFilename)
     return (current, Irrev) + reductionRecord
+
 
 def energyBalanceReduce(Matrix, Irrev, External, Filename = "EnergyReduction.txt", signs = False):
     m, n = getSize(Matrix)
@@ -173,6 +175,7 @@ def energyBalanceReduce(Matrix, Irrev, External, Filename = "EnergyReduction.txt
     writeResults(current, Irrev, tuple([newExternal] + [allSigns]) + reductionRecord, extraFilename)
     return (current, Irrev, newExternal, allSigns) + reductionRecord
 
+
 def fullIterativeReduce(Matrix, Irrev, External, Filename = "IterativeReduction.txt"):
     # Iteratively reduces a system by applying flux-balance and energy-balance constraints
     Iter = 1
@@ -205,6 +208,7 @@ def fullIterativeReduce(Matrix, Irrev, External, Filename = "IterativeReduction.
             Matrix, Irrev, External = result[0], result[1], result[2]
     return (Matrix, Irrev, External)
 
+
 def findExternal(initExternal, reductionRecord):
     External = []
     (rows, cols, onlyPositive, onlyNegative, Enzymes) = reductionRecord
@@ -227,6 +231,7 @@ def findExternal(initExternal, reductionRecord):
             index += 1
     return External
 
+
 def writeResults(Matrix, Irrev, Record, Filename, sep = '\t'):
     f = open(Filename, 'w')
     for row in Matrix:
@@ -239,6 +244,7 @@ def writeResults(Matrix, Irrev, Record, Filename, sep = '\t'):
         f.write('\n')
     f.close()
     return
+
 
 def describeReduction(reductionRecord, Filename, EBA = False):
     # This function creates a description of the reduction (based on a given record) in the specified filename
@@ -259,6 +265,7 @@ def describeReduction(reductionRecord, Filename, EBA = False):
     f.write('Removed ' + str(rows.count(6)) + ' redundant constraints!\n')
     f.close()
     return
+
 
 def matrixToGraph(Matrix):
     # This function creates a graph structure for the bipartite graph represented by Matrix.
@@ -377,12 +384,14 @@ def processZeroLoops(N):
     newN = [filterOut(N[x], loopInds) for x in range(m)]
     return (loopInds, newN)
 
+
 def findRedundant(N):
     # This function returns a list of non-redundant rows in a given matrix.
     # These non-redundant rows form a basis for the rowspace of the matrix.
     Nt = transpose(N)
     (A, active) = GaussJordan(Nt, Gauss = True)
     return active
+
 
 def processRedundant(N):
     # This function returns a list of redundant rows and a matrix without them.
@@ -435,12 +444,14 @@ def findTBlocked(N, Irrev, basename = 'TBlocked.lp', restricted = True, option =
     found = sorted(list(set(found)))
     return found
 
+
 def processTBlocked(N, irrev):
     # This function returns a list of thermodynamically blocked reactions and a matrix without them.
     Irrev = findTrueIndices(irrev)
     TBlocked = findTBlocked(N, Irrev)
     newN = [filterOut(N[x], TBlocked) for x in range(len(N))]
     return (TBlocked, newN)
+
 
 def processEBlocked(N, irrev):
     # This function returns a list of energy blocked reactions and a matrix without them.
@@ -449,6 +460,7 @@ def processEBlocked(N, irrev):
     EBlocked = [x for  x in Irrev if x not in EUnblocked]
     newN = [filterOut(N[x], EBlocked) for x in range(len(N))]
     return (EBlocked, newN)
+
 
 def prepareForCplex(Matrix):
     Matrix, Mults = makeIntegral(transpose(Matrix), mults = True, decim = True) # integralize column-wise
@@ -1014,6 +1026,7 @@ def findFeasible(N, special, Irrev = [], pos = True, Filename = 'trial.lp', disa
     f.close()
     if not Cplex:
         return processFile(Filename, True)
+
 
 def findRatio(N, react1, react2, Irrev, Max = True, ratio = 0, Filename = 'trial.lp', Cplex = False):
     # This function finds the minimum or the maximum ratio of two given entries in the nullspace
