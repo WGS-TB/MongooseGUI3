@@ -257,7 +257,9 @@ def min_free_lunch_finder_ans(p, status, m,n):
 def minimal_free_lunch_finder(model_obj,FL_meta_index_list = None,print_mess = True):
     m, n = getSize(model_obj.fullMatrix)
     excluded_reactions_list = excluded_reactions(model_obj)
-    minimal_free_lunch = 0
+    minimal_free_lunch = []
+    free_lunch_list = []
+    cons= []
     if FL_meta_index_list is None:
         p, status =  minimum_free_lunches(model_obj.fullMatrix,None,excluded_reactions_list,excluded_reactions_list)
         if status == qsoptex.SolutionStatus.OPTIMAL:
@@ -270,10 +272,10 @@ def minimal_free_lunch_finder(model_obj,FL_meta_index_list = None,print_mess = T
     elif FL_meta_index_list is not None:
         FL_meta_list = [1 if i in FL_meta_index_list else 0 for i in range(m)]
         reactions_list = re_weighted_linear_program(model_obj.fullMatrix, FL_meta_list, excluded_reactions_list,excluded_reactions_list)
-        minimal_free_lunch,final_p = extract_minimal_set(model_obj.fullMatrix, reactions_list,FL_meta_list)
+        minimal_free_lunch = extract_minimal_set(model_obj.fullMatrix, reactions_list,FL_meta_list)
         print("Minimal free lunch indexes:", minimal_free_lunch)
     #------------------------Print message-------------------------------------
-    if print_mess:
+    if print_mess==True and len(minimal_free_lunch)!=0 :
         print('------------------ minimal free lunch equation----------------')
         minimal_vector = [None if i in minimal_free_lunch else 0 for i in range(n)]
         a,b,c = free_lunch_check(model_obj.fullMatrix,minimal_vector,FL_meta_list)
