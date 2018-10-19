@@ -63,4 +63,9 @@ def free_lunch_witness_finder(model_obj,y_lower_bound = None,max_num_atoms=1e3):
     flw_objective_value = prob.solution.get_objective_value()
     #print([(v[1:],prob.solution.get_values(v))  for v in prob.variables.get_names() if v[0] == 'x' and prob.solution.get_values(v)!=0])
     flw_list = [int(v[1:]) for v in prob.variables.get_names() if v[0] == 'x' and prob.solution.get_values(v)!=0]
+    #------------------------------ Print----------------------------------------
+    print('Number of free lunch witnesses:',len(flw_list))
+    print('List of free lunch witnesses:',flw_list)
+    print('Computed y lower bound', y_lower_bound)
+    #----------------------------------------------------------------------------
     return flw_list,y_lower_bound
