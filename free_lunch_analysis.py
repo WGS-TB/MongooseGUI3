@@ -343,6 +343,9 @@ def find_ind_flm(model_obj):
         if len(current_row)==1:
             flm_index_list.append(current_row[0])
     flm_list = [model_obj.metabolites[int(i)].species.name for i in flm_index_list]
+    #----------------------------------Print----------------------------------------------------------
+    print('Number of individually producible free lunch metabolites',len(flm_index_list))
+    #-------------------------------------------------------------------------------------------------
     return flm_index_list,flm_list
 # ---------------------------------------------- Additional--------------------------------------------
 # No free Lunch Condition - Faster approach
