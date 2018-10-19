@@ -8,6 +8,8 @@ from Utilities import *
 from Unrelated import *
 from fractions import Fraction
 from functools import reduce
+from free_lunch_witnesses import *
+from free_lunch_analysis import *
 zero, one = Fraction(0), Fraction(1)
 UNBLOCKED, TOPO, IRREV, STOICH, SEMI, SUBSET = list(range(6))
 SURVIVING, DEADEND, REDUNDANT = 0, 1, 6
@@ -335,7 +337,16 @@ class Network:
                 self.metabolites[key].external = True
             self.species = [x for i,x in enumerate(self.species) if i not in Map]
             self.createMatrices()
+    def findFreeLunchWitnesses (self,y_lower_bound=None,max_num_atoms=1e3):
+        return free_lunch_witness_finder(self,y_lower_bound,max_num_atoms)
+    def findFreeLunchMetabolites(self):
+        return find_free_lunch_metabolites(self)
+    def findMinimalFreeLunch(self,free_lunch_meta_list=None,print_mess=True):
+        return minimal_free_lunch_finder(self,free_lunch_meta_list,print_mess)
+    def findIndividuallyProducibleFLM(self):
+        return find_ind_flm(self)
 
+            
 class NetworkDescription():
     def __init__(self, genus, species, iden = None, authors = None, pmid = None, date = None):
         self.genus = genus
