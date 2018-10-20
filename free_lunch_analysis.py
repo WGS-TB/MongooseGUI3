@@ -280,7 +280,7 @@ def minimal_free_lunch_finder(model_obj,FL_meta_index_list = None,print_mess = T
         minimal_vector = [None if i in minimal_free_lunch else 0 for i in range(n)]
         a,b,c = free_lunch_check(model_obj.fullMatrix,minimal_vector,FL_meta_list)
         if c== qsoptex.SolutionStatus.OPTIMAL:
-            free_lunch_list = [(i,b.get_value('x'+str(i))) for i in range(m) if b.get_value('x' + str(i)) != 0]
+            free_lunch_list = [(i,b.get_value('x'+str(i))) for i in range(n) if b.get_value('x' + str(i)) != 0]
         ans_x = [0]*n
         for i in free_lunch_list:
             ans_x[i[0]] = i[1]
