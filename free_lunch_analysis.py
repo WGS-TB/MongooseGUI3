@@ -206,7 +206,7 @@ def extract_minimal_set(N, reactions_list, constraint_rhs):
             print('This index is not in the minimal', i)
             minimal_vector = copy.copy(temp_vector)
         else:
-            print('This index is in the miniaml set', i)
+            print('This index is in the minimal set', i)
             final_minimal.append(i)
     return final_minimal
 
