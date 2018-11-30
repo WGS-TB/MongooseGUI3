@@ -42,7 +42,7 @@ def find_biomass_reaction_candidates(model_obj):
     # i.e. those containing the word 'biomass' or 'growth' in their name.
     #biomass_reactions = [r.index for r in model_obj.reactions if r.name.lower().find('biomass')!=-1\
         #or r.name.lower().find('growth')!=-1]
-    biomass_reactions = [r.index for r in model_obj.reactions if r.name.lower().find('biomass')!=-1]
+    biomass_reactions = [r.index for r in model_obj.reactions if r.name.lower().find('biomass')!=-1 or r.name.lower().find('growth')!=-1]
     if model_obj.findBiomassReaction()!=-1:
         biomass_reactions.append(model_obj.findBiomassReaction())
     return biomass_reactions
