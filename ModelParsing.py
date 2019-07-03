@@ -64,7 +64,11 @@ def createSpeciesList(speciesObjects, speciesTypes, extr, Cobra = False, special
                     detectedDiff = True
                     curExtr = newExtr
             curNote = species.getNotesString()
-            curFormula = getFormulaAndCharge(curNote)
+            curFormula = species.getPlugin('fbc').getChemicalFormula()
+            if not curFormula.strip():
+                curFormula = getFormulaAndCharge(curNote)
+            else:
+                curFormula= convertFormula(curFormula)
             allSpecies[ind] = Species(curID, ind, {'name': curName, 'notes': curNote, 'formula': curFormula})
             allMetabs[ind]  = Metabolite(allSpecies[ind], curComp, ind, curExtr)
         if Cobra and detectedDiff:

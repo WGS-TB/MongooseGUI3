@@ -345,6 +345,8 @@ class Network:
         return minimal_free_lunch_finder(self,free_lunch_meta_list,print_mess)
     def findIndividuallyProducibleFLM(self):
         return find_ind_flm(self)
+    def ElementalBalanceCheckWithChemicalFormula(self):
+        return totalEBCHeck(self)
 
             
 class NetworkDescription():

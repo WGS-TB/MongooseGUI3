@@ -375,3 +375,71 @@ def no_free_lunch_condition(model_obj):
     p.set_param(qsoptex.Parameter.SIMPLEX_DISPLAY, 1)
     status = p.solve()
     return p, status
+
+
+#------------------------------------- Elemental balance via chemical formula---------------------------
+
+def checkElementalBalance(model_obj,reaction_num, r_without_formula, atoms_set, excluded_atoms_list):
+    temp_dic = {}
+    Imbalance_stat = False
+    for i in atoms_set:
+        temp_dic[i] = 0
+    if reaction_num not in r_without_formula:
+        r = model_obj.reactions[reaction_num]
+        for m in r.pairs:
+            for a in list(model_obj.metabolites[m[0]].species.description['formula'].keys()):
+                temp_dic[a] = temp_dic[a]+(m[1]*model_obj.metabolites[m[0]].species.description['formula'][a])
+    for k in excluded_atoms_list:
+        if (k in atoms_set and temp_dic[k]!=0):
+            return Imbalance_stat, temp_dic
+    for j in temp_dic:
+        if temp_dic[j]!=0:
+            Imbalance_stat = True
+    return Imbalance_stat, temp_dic
+#--------------------------------------------------------------------------------------------------------
+def trueAtomsSet(model_obj,r_without_formula):
+    atoms_set = set()
+    for r in model_obj.reactions:
+        if r.index not in r_without_formula:
+            for m in r.pairs:
+                atoms_set = atoms_set.union(model_obj.metabolites[m[0]].species.description['formula'].keys())
+    print('List of atoms:',atoms_set)
+    excluded_atoms_list = [x.replace(" ", "") for x in input('If you like to exclude any atom please write thier formula splited with comma. If no press enter.\n example: if you want to exclude oxygen and hydrogen write O,H.\n').split(',')]
+    return atoms_set,excluded_atoms_list
+#--------------------------------------------------------------------------------------------------------
+
+def totalEBCHeck(model):
+    meta_with_formulas = [m.index for m in model.metabolites if len(m.species.description['formula']) != 0]
+    print('This model contains %d metabolites with assigned chemical formula' % len(meta_with_formulas))
+    r_without_formula = [r.index for r in model.reactions for m in r.pairs if m[0] not in meta_with_formulas]
+    print('This model contains %d reaction without complete set of chemical formulas' % len(set(r_without_formula)))
+    excluded_r = find_biomass_reaction_candidates(model) + find_import_export_reactions(model.fullMatrix)
+    excluded_r = r_without_formula + excluded_r
+    im_reaction_set = set()
+    if len(meta_with_formulas) != 0:
+        atoms_set, excluded_atoms_list = trueAtomsSet(model, excluded_r)
+        for r in model.reactions:
+            Imbalance_stat, temp_dic = checkElementalBalance(model, r.index, excluded_r, atoms_set, excluded_atoms_list)
+            if Imbalance_stat:
+                im_reaction_set.add(r.index)
+        print('Number of imbalance reactions that we found:', len(im_reaction_set))
+
+    return im_reaction_set
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
