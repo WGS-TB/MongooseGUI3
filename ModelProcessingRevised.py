@@ -2016,46 +2016,61 @@ def checkMedium(Set, N, growth, Exchange, rec = False, I = []):
 def GaussJordan(N, pivoting = True, Gauss = False, verbose = False):
     # This function returns the (pivoted) Row-Reduced Echelon Form of N.
     # It was adapted from http://adorio-research.org/wordpress/?p=192.
-    # pivoting = True for partial row pivoting, False if no pivoting.
+    # pivoting = True for partial row pivoting (the largest |entry| of the column at or below the current row),
+    # False for the first nonzero entry of the column at or below the current row, 'markowitz' for the nonzero
+    # entry of the remaining submatrix minimising (nonzeros in its row - 1) * (nonzeros in its column - 1), ties
+    # broken by the shorter numerator and denominator. Markowitz pivoting keeps fill-in down, and with it the growth
+    # of the fractions; its pivot columns need not be the leading columns, so A is then reduced with respect to the
+    # pivots R (identity on R) but not necessarily in echelon form. NullspaceBasis works with any such (A, R).
     # Gauss = True if a Row Echelon Form of N is needed, False otherwise.
-    # Returns (A, R); A: transformed input matrix; R: indices of pivots.
+    # Returns (A, R); A: transformed input matrix; R: indices of pivots (row k of A holds the pivot of column R[k]).
     nrow, ncol = getSize(N)
     A = [[convertToFraction(N[i][j]) for j in range(ncol)] for i in range(nrow)]
     R = []
-    # Triangularization
-    currow = 0
+    remaining = list(range(ncol))
     # This holds the index of the row we are currently searching
+    currow = 0
     if verbose:
         print(('There are ' + str(ncol) + ' columns to be processed'))
-    for pivot in range(ncol):
-        if verbose and pivot % 10 == 0:
-            print(('Processing column ' + str(pivot)))
-        if pivoting:
-            absVals = [abs(A[x][pivot]) for x in range(currow, nrow)]
-            bestPivot = max(absVals)
-            best = currow + absVals.index(bestPivot)
-            # exchange pivot row with best row.
-            if currow != best:
-                A[best], A[currow] = A[currow], A[best]
-        m = A[currow][pivot]
-        if m == zero:
-            # In solving a system, this would mean the algorithm broke down;
-            # however, in our case, this simply means we found a zero column!
-            continue
-        else:
-            R.append(pivot)
-            for row in range(0, nrow):
-                # NOTE: For Gaussian elimination, only eliminate the rows below the current one!
-                if ((Gauss and row > currow) or (not Gauss and row != currow)) and (A[row][pivot] != zero):
-                    kmul = A[row][pivot] / m
-                    # Apply rectangular rule (Reduction)
-                    for col in range(pivot + 1, ncol):
-                        A[row][col] -= (kmul * A[currow][col])
-                    A[row][pivot] = zero
-            currow += 1
-            if currow == nrow:
-                # we are all the way down!
+    while currow < nrow and remaining:
+        if pivoting == 'markowitz':
+            choice = markowitzPivot(A, currow, remaining)
+            if choice is None:
+                # the remaining submatrix is zero
                 break
+            best, pivot = choice
+        else:
+            pivot = remaining.pop(0)
+            if verbose and pivot % 10 == 0:
+                print(('Processing column ' + str(pivot)))
+            column = [A[x][pivot] for x in range(currow, nrow)]
+            if not any(column):
+                # In solving a system, this would mean the algorithm broke down;
+                # however, in our case, this simply means we found a zero column!
+                continue
+            if pivoting:
+                absVals = [abs(x) for x in column]
+                best = currow + absVals.index(max(absVals))
+            else:
+                best = currow + next(i for i, x in enumerate(column) if x != zero)
+        # exchange pivot row with best row.
+        if currow != best:
+            A[best], A[currow] = A[currow], A[best]
+        if pivot in remaining:
+            remaining.remove(pivot)
+        R.append(pivot)
+        m = A[currow][pivot]
+        # Only the remaining columns where the pivot row is nonzero change: the pivot row is zero on earlier pivots
+        support = [col for col in remaining if A[currow][col] != zero]
+        for row in range(0, nrow):
+            # NOTE: For Gaussian elimination, only eliminate the rows below the current one!
+            if ((Gauss and row > currow) or (not Gauss and row != currow)) and (A[row][pivot] != zero):
+                kmul = A[row][pivot] / m
+                # Apply rectangular rule (Reduction)
+                for col in support:
+                    A[row][col] -= (kmul * A[currow][col])
+                A[row][pivot] = zero
+        currow += 1
     if not Gauss:
         # NOTE: For Gaussian elimination, we also don't need to normalize the rows at the end!
         nonPivots = [x for x in range(ncol) if x not in R]
@@ -2067,6 +2082,24 @@ def GaussJordan(N, pivoting = True, Gauss = False, verbose = False):
                 if A[row][col]:
                     A[row][col] /= m
     return (A, R)
+
+def markowitzPivot(A, currow, remaining):
+    # This function returns (row, column) of the Markowitz pivot of the submatrix of A made of the rows from currow
+    # on and the columns in remaining: the nonzero entry minimising (r - 1) * (c - 1), with r and c the numbers of
+    # nonzeros in its row and column of that submatrix, ties broken by the entry's size (the larger bit length of
+    # its numerator and denominator). Returns None if the submatrix is zero.
+    rows = range(currow, len(A))
+    rowCounts = {x: sum(1 for y in remaining if A[x][y] != zero) for x in rows}
+    colCounts = {y: sum(1 for x in rows if A[x][y] != zero) for y in remaining}
+    best = None
+    for x in rows:
+        for y in remaining:
+            v = A[x][y]
+            if v != zero:
+                key = ((rowCounts[x] - 1) * (colCounts[y] - 1), max(abs(v.numerator).bit_length(), v.denominator.bit_length()))
+                if best is None or key < best[0]:
+                    best = (key, x, y)
+    return None if best is None else (best[1], best[2])
 
 def NullspaceBasis(N, GJ = False):
     # This function computes the nullspace basis using a Gauss-Jordan elimination
